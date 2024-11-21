@@ -1,0 +1,474 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Todo Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-4 sm:p-8 border border-gray-200">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 space-y-4 sm:space-y-0">
+            <div class="flex items-center justify-center w-full sm:w-auto">
+                <i class="fas fa-clipboard-list text-indigo-600 mr-4 text-4xl"></i>
+                <h1 class="text-2xl sm:text-4xl font-bold text-gray-800">Todo Manager</h1>
+            </div>
+            <div id="filterButtons" class="flex space-x-2">
+                <button data-filter="all" class="filter-btn bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600 text-sm sm:text-base">All</button>
+                <button data-filter="completed" class="filter-btn bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 text-sm sm:text-base">Completed</button>
+            </div>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row mb-6 shadow-lg rounded-xl overflow-hidden">
+            <input 
+                id="todoInput" 
+                type="text" 
+                placeholder="Enter a new task" 
+                class="w-full p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base sm:text-lg"
+            >
+            <button 
+                id="addTodoBtn"
+                class="w-full sm:w-auto bg-indigo-500 text-white px-6 py-4 sm:py-0 hover:bg-indigo-600 transition-colors flex items-center justify-center"
+            >
+                <i class="fas fa-plus mr-2"></i>Add Task
+            </button>
+        </div>
+
+        <div id="statsContainer" class="mb-4 flex flex-col sm:flex-row justify-between text-gray-600 space-y-2 sm:space-y-0 text-sm sm:text-base">
+            <span id="totalTasks">Total Tasks: 0</span>
+            <span id="completedTasks">Completed: 0</span>
+        </div>
+
+        <ul id="todoList" class="space-y-4"></ul>
+    </div>
+
+    <script>
+        const todoInput = document.getElementById('todoInput');
+        const addTodoBtn = document.getElementById('addTodoBtn');
+        const todoList = document.getElementById('todoList');
+        const filterButtons = document.getElementById('filterButtons');
+        const statsContainer = document.getElementById('statsContainer');
+
+        let todos = JSON.parse(localStorage.getItem('todos')) || [];
+        let currentFilter = 'all';
+
+        function saveToLocalStorage() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        }
+
+        function updateStats() {
+            const totalTasks = todos.length;
+            const completedTasks = todos.filter(todo => todo.completed).length;
+
+            document.getElementById('totalTasks').textContent = `Total Tasks: ${totalTasks}`;
+            document.getElementById('completedTasks').textContent = `Completed: ${completedTasks}`;
+        }
+
+        function renderTodos() {
+            todoList.innerHTML = '';
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === 'completed') return todo.completed;
+                return true;
+            });
+
+            filteredTodos.forEach((todo, index) => {
+                const li = document.createElement('li');
+                li.className = `
+                    flex flex-col sm:flex-row items-center p-4 rounded-xl 
+                    ${todo.completed ? 'bg-green-50 border-l-4 border-green-500' : 'bg-gray-50 border-l-4'}
+                    transition-all duration-200 hover:shadow-lg relative space-y-2 sm:space-y-0
+                `;
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = todo.completed;
+                checkbox.className = 'mr-3';
+                checkbox.addEventListener('change', () => toggleTodo(index));
+
+                const todoText = document.createElement('span');
+                todoText.textContent = todo.text;
+                todoText.className = `
+                    w-full sm:flex-grow text-center sm:text-left
+                    ${todo.completed ? 'line-through text-gray-400' : 'text-gray-800'}
+                `;
+
+                const actionContainer = document.createElement('div');
+                actionContainer.className = 'flex items-center space-x-3 mt-2 sm:mt-0';
+
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = '<i class="fas fa-edit text-blue-400 hover:text-blue-600"></i>';
+                editBtn.addEventListener('click', () => editTodo(index));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt text-red-400 hover:text-red-600"></i>';
+                deleteBtn.addEventListener('click', () => deleteTodo(index));
+
+                li.appendChild(checkbox);
+                li.appendChild(todoText);
+                li.appendChild(actionContainer);
+                actionContainer.appendChild(editBtn);
+                actionContainer.appendChild(deleteBtn);
+
+                todoList.appendChild(li);
+            });
+
+            updateStats();
+        }
+
+        function addTodo() {
+            const text = todoInput.value.trim();
+            if (text) {
+                todos.push({ 
+                    text, 
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                });
+                todoInput.value = '';
+                saveToLocalStorage();
+                renderTodos();
+            }
+        }
+
+        function toggleTodo(index) {
+            todos[index].completed = !todos[index].completed;
+            saveToLocalStorage();
+            renderTodos();
+        }
+
+        function editTodo(index) {
+            const newText = prompt('Edit todo:', todos[index].text);
+            if (newText !== null && newText.trim()) {
+                todos[index].text = newText.trim();
+                saveToLocalStorage();
+                renderTodos();
+            }
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            saveToLocalStorage();
+            renderTodos();
+        }
+
+        // Filter functionality
+        filterButtons.addEventListener('click', (e) => {
+            if (e.target.classList.contains('filter-btn')) {
+                currentFilter = e.target.getAttribute('data-filter');
+                
+                // Update button styles
+                filterButtons.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('bg-indigo-500', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                });
+                
+                e.target.classList.remove('bg-gray-200', 'text-gray-700');
+                e.target.classList.add('bg-indigo-500', 'text-white');
+                
+                renderTodos();
+            }
+        });
+
+        addTodoBtn.addEventListener('click', addTodo);
+        todoInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTodo();
+        });
+
+        // Initial render
+        renderTodos();
+    </script>
+</body>
+</html> -->
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Todo Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-100 to-gray-200 min-h-screen flex items-center justify-center p-4">
+    <div id="authContainer" class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-gray-200">
+        <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">User Registration</h1>
+        <form id="registrationForm" class="space-y-4">
+            <input 
+                type="text" 
+                id="nameInput" 
+                placeholder="Full Name" 
+                required 
+                class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <input 
+                type="email" 
+                id="emailInput" 
+                placeholder="Email Address" 
+                required 
+                class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <input 
+                type="password" 
+                id="passwordInput" 
+                placeholder="Password" 
+                required 
+                minlength="8"
+                class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <select 
+                id="genderInput" 
+                required 
+                class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+            </select>
+            <input 
+                type="number" 
+                id="ageInput" 
+                placeholder="Age" 
+                required 
+                min="18" 
+                max="120"
+                class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <input 
+                type="text" 
+                id="locationInput" 
+                placeholder="Location" 
+                required 
+                class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <button 
+                type="submit" 
+                class="w-full bg-indigo-500 text-white p-3 rounded hover:bg-indigo-600 transition-colors"
+            >
+                Register
+            </button>
+        </form>
+    </div>
+
+    <div id="todoContainer" class="hidden w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-4 sm:p-8 border border-gray-200">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 space-y-4 sm:space-y-0">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center">
+                    <i class="fas fa-clipboard-list text-indigo-600 mr-4 text-4xl"></i>
+                    <h1 id="userNameDisplay" class="text-2xl sm:text-4xl font-bold text-gray-800"></h1>
+                </div>
+                <button 
+                    id="logoutBtn" 
+                    class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+                >
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row mb-6 shadow-lg rounded-xl overflow-hidden">
+            <input 
+                id="todoInput" 
+                type="text" 
+                placeholder="Enter a new task" 
+                class="w-full p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base sm:text-lg"
+            >
+            <button 
+                id="addTodoBtn"
+                class="w-full sm:w-auto bg-indigo-500 text-white px-6 py-4 sm:py-0 hover:bg-indigo-600 transition-colors flex items-center justify-center"
+            >
+                <i class="fas fa-plus mr-2"></i>Add Task
+            </button>
+        </div>
+
+        <div id="statsContainer" class="mb-4 flex flex-col sm:flex-row justify-between text-gray-600 space-y-2 sm:space-y-0 text-sm sm:text-base">
+            <span id="totalTasks">Total Tasks: 0</span>
+            <span id="completedTasks">Completed: 0</span>
+        </div>
+
+        <ul id="todoList" class="space-y-4"></ul>
+    </div>
+
+    <script>
+        const authContainer = document.getElementById('authContainer');
+        const todoContainer = document.getElementById('todoContainer');
+        const registrationForm = document.getElementById('registrationForm');
+        const todoInput = document.getElementById('todoInput');
+        const addTodoBtn = document.getElementById('addTodoBtn');
+        const todoList = document.getElementById('todoList');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userNameDisplay = document.getElementById('userNameDisplay');
+
+        // User Registration
+        registrationForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('nameInput').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            const gender = document.getElementById('genderInput').value;
+            const age = document.getElementById('ageInput').value;
+            const location = document.getElementById('locationInput').value;
+
+            // Password validation
+            const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+            if (!passwordRegex.test(password)) {
+                alert('Password must be at least 8 characters long and include letters and numbers');
+                return;
+            }
+
+            const user = {
+                name, email, password, gender, age, location
+            };
+
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            
+            // Switch to todo view
+            authContainer.classList.add('hidden');
+            todoContainer.classList.remove('hidden');
+            
+            // Set username in todo view
+            userNameDisplay.textContent = `Welcome, ${name}`;
+
+            // Reset todos for this user
+            todos = [];
+            saveToLocalStorage();
+            renderTodos();
+        });
+
+        // Todo Management (similar to previous implementation)
+        let todos = JSON.parse(localStorage.getItem('todos')) || [];
+        let currentFilter = 'all';
+
+        function saveToLocalStorage() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        }
+
+        function updateStats() {
+            const totalTasks = todos.length;
+            const completedTasks = todos.filter(todo => todo.completed).length;
+
+            document.getElementById('totalTasks').textContent = `Total Tasks: ${totalTasks}`;
+            document.getElementById('completedTasks').textContent = `Completed: ${completedTasks}`;
+        }
+
+        function renderTodos() {
+            todoList.innerHTML = '';
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === 'completed') return todo.completed;
+                return true;
+            });
+
+            filteredTodos.forEach((todo, index) => {
+                const li = document.createElement('li');
+                li.className = `
+                    flex flex-col sm:flex-row items-center p-4 rounded-xl 
+                    ${todo.completed ? 'bg-green-50 border-l-4 border-green-500' : 'bg-gray-50 border-l-4'}
+                    transition-all duration-200 hover:shadow-lg relative space-y-2 sm:space-y-0
+                `;
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = todo.completed;
+                checkbox.className = 'mr-3';
+                checkbox.addEventListener('change', () => toggleTodo(index));
+
+                const todoText = document.createElement('span');
+                todoText.textContent = todo.text;
+                todoText.className = `
+                    w-full sm:flex-grow text-center sm:text-left
+                    ${todo.completed ? 'line-through text-gray-400' : 'text-gray-800'}
+                `;
+
+                const actionContainer = document.createElement('div');
+                actionContainer.className = 'flex items-center space-x-3 mt-2 sm:mt-0';
+
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = '<i class="fas fa-edit text-blue-400 hover:text-blue-600"></i>';
+                editBtn.addEventListener('click', () => editTodo(index));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt text-red-400 hover:text-red-600"></i>';
+                deleteBtn.addEventListener('click', () => deleteTodo(index));
+
+                li.appendChild(checkbox);
+                li.appendChild(todoText);
+                li.appendChild(actionContainer);
+                actionContainer.appendChild(editBtn);
+                actionContainer.appendChild(deleteBtn);
+
+                todoList.appendChild(li);
+            });
+
+            updateStats();
+        }
+
+        function addTodo() {
+            const text = todoInput.value.trim();
+            if (text) {
+                todos.push({ 
+                    text, 
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                });
+                todoInput.value = '';
+                saveToLocalStorage();
+                renderTodos();
+            }
+        }
+
+        function toggleTodo(index) {
+            todos[index].completed = !todos[index].completed;
+            saveToLocalStorage();
+            renderTodos();
+        }
+
+        function editTodo(index) {
+            const newText = prompt('Edit todo:', todos[index].text);
+            if (newText !== null && newText.trim()) {
+                todos[index].text = newText.trim();
+                saveToLocalStorage();
+                renderTodos();
+            }
+        }
+
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            saveToLocalStorage();
+            renderTodos();
+        }
+
+        // Logout functionality
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('todos');
+            authContainer.classList.remove('hidden');
+            todoContainer.classList.add('hidden');
+            registrationForm.reset();
+        });
+
+        // Check for existing user on page load
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (currentUser) {
+            authContainer.classList.add('hidden');
+            todoContainer.classList.remove('hidden');
+            userNameDisplay.textContent = `Welcome, ${currentUser.name}`;
+            
+            // Load user's todos
+            todos = JSON.parse(localStorage.getItem('todos')) || [];
+            renderTodos();
+        }
+
+        addTodoBtn.addEventListener('click', addTodo);
+        todoInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTodo();
+        });
+    </script>
+</body>
+</html>
